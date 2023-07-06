@@ -30,6 +30,7 @@ on:
       - dev
     paths:
       - 'max_centerofmass_vpos/**'
+  workflow_dispatch:
 
 name: DEV Analysis "max centerofmass vpos" build & deployment
 
