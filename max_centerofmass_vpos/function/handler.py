@@ -53,7 +53,7 @@ def handler(event, context):
     specific_trial_names = kwargs['specific_trial_names']
 
     # Specify where to download the data.
-    data_folder = os.path.join("./Data", session_id)
+    data_folder = os.path.join("/tmp/Data", session_id)
 
     # %% Download data.
     trial_names, modelName = download_kinematics(session_id, folder=data_folder, trialNames=specific_trial_names)
