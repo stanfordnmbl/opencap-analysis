@@ -31,6 +31,13 @@ def handler(event, context):
         To invoke the function do POST request on the following url
         http://localhost:8080/2015-03-31/functions/function/invocations
     """
+    # temporary placeholder
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': event,
+    }
+
     for field in ('session_id', 'specific_trial_names'):
         if field not in event:
             return {
