@@ -69,6 +69,6 @@ jobs:
 
     - name: Force deployment
       run: |
-        aws lambda update-function-code --function-name analysis-max-centerofmass-vpos-dev --image-uri "660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos-dev:$IMAGE_TAG"
+        aws lambda update-function-code --function-name analysis-max-centerofmass-vpos-dev --image-uri 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos-dev:latest
 
 
