@@ -41,6 +41,7 @@ def download_file(url, file_name):
         shutil.copyfileobj(response, out_file)
 
 def get_session_json(session_id):
+    print(f'API_URL="{API_URL}" API_TOKEN="{API_TOKEN}"')
     resp = requests.get(
         API_URL + "sessions/{}/".format(session_id),
         headers = {"Authorization": "Token {}".format(API_TOKEN)})
