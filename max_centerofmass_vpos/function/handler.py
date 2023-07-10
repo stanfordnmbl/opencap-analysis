@@ -17,6 +17,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 '''
+import json
 import os
 import numpy as np
 
@@ -31,8 +32,11 @@ def handler(event, context):
         To invoke the function do POST request on the following url
         http://localhost:8080/2015-03-31/functions/function/invocations
     """
+    # temporary placeholder
+    kwargs = json.loads(event['body'])
+
     for field in ('session_id', 'specific_trial_names'):
-        if field not in event:
+        if field not in kwargs:
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json'},
@@ -42,14 +46,14 @@ def handler(event, context):
     # %% User inputs.
     # Specify session id; see end of url in app.opencap.ai/session/<session_id>.
     # session_id = "bd61b3a6-813d-411c-8067-92315b3d4e0d"
-    session_id = event['session_id']
+    session_id = kwargs['session_id']
 
     # Specify trial names in a list; use None to process all trials in a session.
     # specific_trial_names = ['test']
-    specific_trial_names = event['specific_trial_names']
+    specific_trial_names = kwargs['specific_trial_names']
 
     # Specify where to download the data.
-    data_folder = os.path.join("./Data", session_id)
+    data_folder = os.path.join("/tmp/Data", session_id)
 
     # %% Download data.
     trial_names, modelName = download_kinematics(session_id, folder=data_folder, trialNames=specific_trial_names)
