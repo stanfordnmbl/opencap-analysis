@@ -25,14 +25,14 @@
 #    and best practices on handling the access key credentials.
 
 on:
-  push:
-    branches:
-      - dev
-    paths:
-      - 'max_centerofmass_vpos/**'
+#  push:
+#    branches:
+#      - main
+#    paths:
+#      - 'max_centerofmass_vpos/**'
   workflow_dispatch:
 
-name: DEV Analysis "max centerofmass vpos" build & deployment
+name: PROD Analysis "max centerofmass vpos" build & deployment
 
 jobs:
   deploy:
@@ -63,12 +63,12 @@ jobs:
         # push it to ECR so that it can
         # be deployed to ECS.
         cd max_centerofmass_vpos
-        docker build -f Dockerfile -t 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos-dev:$IMAGE_TAG .
-        docker push 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos-dev:$IMAGE_TAG
-        echo "::set-output name=image::660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos-dev:$IMAGE_TAG"
+        docker build -f Dockerfile -t 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos:$IMAGE_TAG .
+        docker push 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos:$IMAGE_TAG
+        echo "::set-output name=image::660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos:$IMAGE_TAG"
 
     - name: Force deployment
       env:
         IMAGE_TAG: latest # ${{ github.sha }}
       run: |
-        aws lambda update-function-code --function-name analysis-max-centerofmass-vpos-dev --image-uri 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos-dev:$IMAGE_TAG
+        aws lambda update-function-code --function-name analysis-max-centerofmass-vpos-dev --image-uri 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos:$IMAGE_TAG
