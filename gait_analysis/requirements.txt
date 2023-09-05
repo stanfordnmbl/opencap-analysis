@@ -1,5 +1,7 @@
 scipy
 pandas
+matplotlib
+ipython
 python-decouple
 maskpass==0.3.6
 requests
