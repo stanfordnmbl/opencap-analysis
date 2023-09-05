@@ -21,7 +21,7 @@ import json
 import os
 import numpy as np
 
-from utilsKinematics import Kinematics
+from utilsKinematics import kinematics
 from utils import download_kinematics
 
 
@@ -59,15 +59,15 @@ def handler(event, context):
     trial_names, modelName = download_kinematics(session_id, folder=data_folder, trialNames=specific_trial_names)
 
     # %% Process data.
-    kinematics, center_of_mass = {}, {}
+    kinematics_data, center_of_mass = {}, {}
     center_of_mass['values'] = {}
     for trial_name in trial_names:
         # Create object from class kinematics.
-        kinematics[trial_name] = Kinematics(
+        kinematics_data[trial_name] = kinematics(
             data_folder, trial_name, modelName=modelName, lowpass_cutoff_frequency_for_coordinate_values=10
         )    
         # Get center of mass values, speeds, and accelerations.
-        center_of_mass['values'][trial_name] = kinematics[trial_name].get_center_of_mass_values(
+        center_of_mass['values'][trial_name] = kinematics_data[trial_name].get_center_of_mass_values(
             lowpass_cutoff_frequency=10
         )
     
