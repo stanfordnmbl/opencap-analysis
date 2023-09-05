@@ -104,13 +104,14 @@ def handler(event, context):
         'statusCode': 200,
         'headers': {'Content-Type': 'application/json'},
         'body': {
-            'message': f'''
-            Gait speed - Right: {right_gait_speed} m/s, Left: {left_gait_speed} m/s \n 
-            Stride length - Right: {right_stride_length} m, Left: {left_stride_length} m \n
-            Step width - Right: {right_step_width} m, Left: {left_step_width} m \n
-            Cadence - Right: {right_cadence} step/s, Left: {left_cadence} step/s \n
-            Single support time - Right: {right_single_support_time} s, Left: {left_single_support_time} s \n
-            Double support time - Right: {right_double_support_time} s, Left: {left_double_support_time} s \n
-            '''
+            'message': f'Gait speed - Right: {right_gait_speed} m/s'
+            # 'message': f'''
+            # Gait speed - Right: {right_gait_speed} m/s, Left: {left_gait_speed} m/s \n 
+            # Stride length - Right: {right_stride_length} m, Left: {left_stride_length} m \n
+            # Step width - Right: {right_step_width} m, Left: {left_step_width} m \n
+            # Cadence - Right: {right_cadence} step/s, Left: {left_cadence} step/s \n
+            # Single support time - Right: {right_single_support_time} s, Left: {left_single_support_time} s \n
+            # Double support time - Right: {right_double_support_time} s, Left: {left_double_support_time} s \n
+            # '''
         }
     }
