@@ -19,12 +19,14 @@
 '''
 
 import os
+pathFile = os.path.dirname(os.path.realpath(__file__))
+
 import logging
 import opensim
 import numpy as np
 from scipy import signal
 import matplotlib.pyplot as plt
-from utils import storage_to_dataframe
+from utils import storage_to_dataframe, download_trial, get_trial_id
 
 def lowPassFilter(time, data, lowpass_cutoff_frequency, order=4):
     
@@ -35,9 +37,24 @@ def lowPassFilter(time, data, lowpass_cutoff_frequency, order=4):
 
     return dataFilt
 
+# %% Segment gait
+def segment_gait(session_id, trial_name, data_folder, gait_cycles_from_end=0):
+    
+    # Segmentation is done in the gait_analysis class
+    from gait_analysis import gait_analysis  
+    
+    gait = gait_analysis(os.path.join(data_folder,session_id), trial_name,
+                         n_gait_cycles=-1)
+    heelstrikeTimes = gait.gaitEvents['ipsilateralTime'][gait_cycles_from_end,(0,2)].tolist()
+    
+    return heelstrikeTimes, gait
+
 # %% Segment squats.
-def segmentSquats(ikFilePath, pelvis_ty=None, timeVec=None, visualize=False,
+def segment_squats(ikFilePath, pelvis_ty=None, timeVec=None, visualize=False,
                   filter_pelvis_ty=True, cutoff_frequency=4, height=.2):
+    
+    # TODO: eventually, this belongs in a squat_analysis class and should take
+    # the form of segment_gait
     
     # Extract pelvis_ty if not given.
     if pelvis_ty is None and timeVec is None:
@@ -97,9 +114,12 @@ def segmentSquats(ikFilePath, pelvis_ty=None, timeVec=None, visualize=False,
          from delayed start to corresponding periodic end in terms of
          vertical pelvis position.     
 '''
-def segmentSTS(ikFilePath, pelvis_ty=None, timeVec=None, velSeated=0.3,
+def segment_STS(ikFilePath, pelvis_ty=None, timeVec=None, velSeated=0.3,
                velStanding=0.15, visualize=False, filter_pelvis_ty=True, 
                cutoff_frequency=4, delay=0.1):
+    
+    # TODO: eventually, this belongs in a sts_analysis class and should take
+    # the form of segment_gait
     
     # Extract pelvis_ty if not given.
     if pelvis_ty is None and timeVec is None:
@@ -204,17 +224,25 @@ def segmentSTS(ikFilePath, pelvis_ty=None, timeVec=None, velSeated=0.3,
 # wrapping giving rise to bad muscle-tendon lengths and moment arms. Changes
 # are made for the gmax1, iliacus, and psoas. Changes are documented in
 # modelAdjustment.log.
-def adjustMuscleWrapping(
+def adjust_muscle_wrapping(
         baseDir, dataDir, subject, poseDetector='DefaultPD', 
-        cameraSetup='DefaultModel', 
-        OpenSimModel="LaiUhlrich2022",
+        cameraSetup='DefaultModel', OpenSimModel="LaiUhlrich2022",
         overwrite=False):
     
     # Paths
     osDir = os.path.join(dataDir, subject, 'OpenSimData')
     pathModelFolder = os.path.join(osDir, 'Model')
+    
+    # We changed the OpenSim model name after some time:
+    # from LaiArnoldModified2017_poly_withArms_weldHand to LaiUhlrich2022.
+    # This is a hack for backward compatibility.
+    if OpenSimModel == 'LaiArnoldModified2017_poly_withArms_weldHand':
+        unscaledModelName = 'LaiUhlrich2022'
+    else:
+        unscaledModelName = OpenSimModel
+    
     pathUnscaledModel = os.path.join(baseDir, 'OpenSimPipeline', 'Models',
-                                     OpenSimModel + '.osim')
+                                     unscaledModelName + '.osim')
     pathScaledModel = os.path.join(pathModelFolder,
                                    OpenSimModel + '_scaled.osim')
     pathOutputModel = os.path.join(pathModelFolder,
@@ -222,6 +250,8 @@ def adjustMuscleWrapping(
     
     if overwrite is False and os.path.exists(pathOutputModel):
         return
+    else:
+        print('Adjust muscle wrapping surfaces.')
         
     # Set up logging.
     logPath = os.path.join(pathModelFolder,'modelAdjustment.log')
@@ -470,10 +500,10 @@ def getMomentArms(model, poses, muscleName, coordinateForMomentArm):
     return momentArms
 
 # %% Generate model with contacts.
-def generateModelWithContacts(
+def generate_model_with_contacts(
         dataDir, subject, poseDetector='DefaultPD', cameraSetup='DefaultModel',
-        OpenSimModel="LaiUhlrich2022",
-        setPatellaMasstoZero=True, overwrite=False):
+        OpenSimModel="LaiUhlrich2022", setPatellaMasstoZero=True, 
+        overwrite=False):
     
     # %% Process settings.
     osDir = os.path.join(dataDir, subject, 'OpenSimData')
@@ -486,6 +516,8 @@ def generateModelWithContacts(
     
     if overwrite is False and os.path.exists(pathOutputModel):
         return
+    else:
+        print('Add foot-ground contacts.')
         
     # %% Add contact spheres to the scaled model.
     # The parameters of the foot-ground contacts are based on previous work. We
