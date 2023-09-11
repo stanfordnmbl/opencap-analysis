@@ -18,17 +18,12 @@
     limitations under the License.
 """
 
-import os
-import sys
-sys.path.append('../')
                 
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
 
 from utilsKinematics import kinematics
-from utilsProcessing import lowPassFilter
-from utilsTRC import trc_2_dict
 
 
 class gait_analysis(kinematics):
@@ -72,6 +67,11 @@ class gait_analysis(kinematics):
         if self._R_world_to_gait is None:
             self._R_world_to_gait = self.compute_gait_frame()
         return self._R_world_to_gait
+    
+    def get_gait_events(self):
+        
+        return self.gaitEvents
+        
     
     def compute_scalars(self,scalarNames):
                
@@ -190,9 +190,28 @@ class gait_analysis(kinematics):
         
         return stepWidth
     
+    def compute_stance_time(self):
+        
+        stanceTime = np.diff(self.gaitEvents['ipsilateralTime'][:,:2])
+        
+        # Average across all strides.
+        stanceTime = np.mean(stanceTime)
+        
+        return stanceTime
+    
+    def compute_swing_time(self):
+        
+        swingTime = np.diff(self.gaitEvents['ipsilateralTime'][:,1:])
+        
+        # Average across all strides.
+        swingTime = np.mean(swingTime)
+        
+        return swingTime
+    
     def compute_single_support_time(self):
         
-        singleSupportTime = np.diff(self.gaitEvents['ipsilateralTime'][:,:2])
+        # Contralateral swing time
+        singleSupportTime = np.diff(self.gaitEvents['contralateralTime'][:,:2])        
         
         # Average across all strides.
         singleSupportTime = np.mean(singleSupportTime)
@@ -201,7 +220,7 @@ class gait_analysis(kinematics):
         
     def compute_double_support_time(self):
         
-        # Ipsilateral single support time - contralateral swing time.
+        # Ipsilateral stance time - contralateral swing time.
         doubleSupportTime = (
             np.diff(self.gaitEvents['ipsilateralTime'][:,:2]) - 
             np.diff(self.gaitEvents['contralateralTime'][:,:2]))
@@ -370,7 +389,7 @@ class gait_analysis(kinematics):
             n_gait_cycles = len(hsIps)-1
         if n_gait_cycles == -1:
             n_gait_cycles = len(hsIps)-1
-            print('Processing {} gait cycles.'.format(n_gait_cycles))
+            print('Processing {} gait cycles, leg: '.format(n_gait_cycles) + leg + '.')
             
         # Ipsilateral gait events: heel strike, toe-off, heel strike.
         gaitEvents_ips = np.zeros((n_gait_cycles, 3),dtype=np.int)
@@ -407,15 +426,25 @@ class gait_analysis(kinematics):
                     gaitEvents_cont[i,1] = hsCont[-j-1]
                     hsContFound = True
             
-            # Making contralateral gait events optional.
+            # Skip this step if no contralateral peaks fell within ipsilateral events
+            # This can happen with noisy data with subject far from camera. 
             if not toContFound or not hsContFound:                   
-                raise Warning('Could not find contralateral gait event within ipsilateral gait event range.')
-                gaitEvents_cont[i,0] = np.nan
-                gaitEvents_cont[i,1] = np.nan
+                print('Could not find contralateral gait event within ' + 
+                               'ipsilateral gait event range ' + str(i+1) + 
+                               ' steps until the end. Skipping this step.')
+                gaitEvents_cont[i,:] = -1
+                gaitEvents_ips[i,:] = -1
+        
+        # Remove any nan rows
+        mask_ips = (gaitEvents_ips == -1).any(axis=1)
+        if all(mask_ips):
+            raise Exception('No good steps for ' + leg + ' leg.')
+        gaitEvents_ips = gaitEvents_ips[~mask_ips]
+        gaitEvents_cont = gaitEvents_cont[~mask_ips]
             
-            # Convert gaitEvents to times using self.markerDict['time'].
-            gaitEventTimes_ips = self.markerDict['time'][gaitEvents_ips]
-            gaitEventTimes_cont = self.markerDict['time'][gaitEvents_cont]
+        # Convert gaitEvents to times using self.markerDict['time'].
+        gaitEventTimes_ips = self.markerDict['time'][gaitEvents_ips]
+        gaitEventTimes_cont = self.markerDict['time'][gaitEvents_cont]
                             
         gaitEvents = {'ipsilateralIdx':gaitEvents_ips,
                       'contralateralIdx':gaitEvents_cont,

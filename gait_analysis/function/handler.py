@@ -60,7 +60,7 @@ def handler(event, context):
 
     # Select how many gait cycles you'd like to analyze. Select -1 for all gait
     # cycles detected in the trial.
-    n_gait_cycles = -1 
+    n_gait_cycles = 1
 
     # Select lowpass filter frequency for kinematics data.
     filter_frequency = 6
@@ -70,47 +70,67 @@ def handler(event, context):
                     'single_support_time','double_support_time'}
 
     # %% Process data.
-    gait_r = gait_analysis(
-        sessionDir, trial_name, leg='r',
-        lowpass_cutoff_frequency_for_coordinate_values=filter_frequency,
-        n_gait_cycles=n_gait_cycles)
-    gait_l = gait_analysis(
-        sessionDir, trial_name, leg='l',
-        lowpass_cutoff_frequency_for_coordinate_values=filter_frequency,
-        n_gait_cycles=n_gait_cycles)
+    # Init gait analysis and get gait events.
+    legs = ['r','l']
+    gait, gait_events, ipsilateral = {}, {}, {}
+    for leg in legs:
+        gait[leg] = gait_analysis(
+            sessionDir, trial_name, leg=leg,
+            lowpass_cutoff_frequency_for_coordinate_values=filter_frequency,
+            n_gait_cycles=n_gait_cycles)
+        gait_events[leg] = gait[leg].get_gait_events()
+        ipsilateral[leg] = gait_events[leg]['ipsilateralTime'][0,-1]
 
-    gaitResults = {}
-    gaitResults['scalars_r'] = gait_r.compute_scalars(scalar_names)
-    # gaitResults['curves_r'] = gait_r.get_coordinates_normalized_time()
-    # gaitResults['scalars_l'] = gait_l.compute_scalars(scalar_names)
-    # gaitResults['curves_l'] = gait_l.get_coordinates_normalized_time()
+    # Select last leg.
+    last_leg = 'r' if ipsilateral['r'] > ipsilateral['l'] else 'l'
 
-    right_gait_speed = np.round(gaitResults['scalars_r']['gait_speed'], 2)
-    # right_stride_length = np.round(gaitResults['scalars_r']['stride_length'], 2)
-    # right_step_width = np.round(gaitResults['scalars_r']['step_width'], 2)
-    # right_cadence = np.round(gaitResults['scalars_r']['cadence'], 2)
-    # right_single_support_time = np.round(gaitResults['scalars_r']['single_support_time'], 2)
-    # right_double_support_time = np.round(gaitResults['scalars_r']['double_support_time'], 2)
+    # Compute scalars.
+    gait_scalars = gait[last_leg].compute_scalars(scalar_names)
 
-    # left_gait_speed = np.round(gaitResults['scalars_l']['gait_speed'], 2)
-    # left_stride_length = np.round(gaitResults['scalars_l']['stride_length'], 2)
-    # left_step_width = np.round(gaitResults['scalars_l']['step_width'], 2)
-    # left_cadence = np.round(gaitResults['scalars_l']['cadence'], 2)
-    # left_single_support_time = np.round(gaitResults['scalars_l']['single_support_time'], 2)
-    # left_double_support_time = np.round(gaitResults['scalars_l']['double_support_time'], 2)
+    # %% Return indices for visualizer and line curve plot.
+    indices = {}
+    indices['start'] = int(gait_events[last_leg]['ipsilateralIdx'][0,0])
+    indices['end'] = int(gait_events[last_leg]['ipsilateralIdx'][0,-1])
 
+    # The visualizer in step 5 loads the file tagged `visualizerTransforms-json`.
+    # https://github.com/stanfordnmbl/opencap-viewer/blob/main/src/components/pages/Step5.vue#L973 
+    # For the gait dashboard, we should use the same file but play it from
+    # index indices['start'] to index indices['end'].
+
+    # The line curve chart loads the file tagged `ik_results`.
+    # https://github.com/stanfordnmbl/opencap-viewer/blob/main/src/components/pages/Dashboard.vue#L244
+    # https://github.com/stanfordnmbl/opencap-viewer/blob/main/src/components/pages/Dashboard.vue#L433
+    # For the gait dashboard, we should use the same file but play it from
+    # index indices['start'] to index indices['end'].
+
+    # Both files have the same number of frames. We want to display a vertical bar
+    # on the line curve chart that is temporarily aligned with the visualizer. Eg,
+    # when the visualizer displays frame #50, the vertical bar in the line curve
+    # chart should be at frame #50. The goal is to allow users to visualy compare
+    # what is happening in the visualizer (skeleton) with what is happening in the
+    # data (line curves). For example, when the left foot touches the ground, the
+    # angle of the knee is 10 degrees.
+
+    # %% Return gait metrics for scalar chart.
+    # Instructions for the frontend will come later.
+    gait_metrics = {}
+    for scalar_name in scalar_names:
+        gait_metrics[scalar_name] = np.round(gait_scalars[scalar_name], 2)
+
+    # %% Dump data into json file.
+    # Create results dictionnary with indices and gait_metrics.
+    results = {'indices': indices, 'gait_metrics': gait_metrics}    
+
+    # TODO: push results dict to `Results` instance of the trial.
+    # with open('results.json', 'w') as outfile:
+    #     json.dump(results, outfile)
+
+    # Temporary placeholder.
+    gait_speed = gait_metrics['gait_speed']
     return {
         'statusCode': 200,
         'headers': {'Content-Type': 'application/json'},
         'body': {
-            'message': f'Gait speed - Right: {right_gait_speed} m/s'
-            # 'message': f'''
-            # Gait speed - Right: {right_gait_speed} m/s, Left: {left_gait_speed} m/s \n 
-            # Stride length - Right: {right_stride_length} m, Left: {left_stride_length} m \n
-            # Step width - Right: {right_step_width} m, Left: {left_step_width} m \n
-            # Cadence - Right: {right_cadence} step/s, Left: {left_cadence} step/s \n
-            # Single support time - Right: {right_single_support_time} s, Left: {left_single_support_time} s \n
-            # Double support time - Right: {right_double_support_time} s, Left: {left_double_support_time} s \n
-            # '''
+            'message': f'Gait speed - {gait_speed} m/s'
         }
     }
