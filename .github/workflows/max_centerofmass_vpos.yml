@@ -71,4 +71,4 @@ jobs:
       env:
         IMAGE_TAG: latest # ${{ github.sha }}
       run: |
-        aws lambda update-function-code --function-name analysis-max-centerofmass-vpos-dev --image-uri 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos:$IMAGE_TAG | jq 'if .Environment.Variables.API_TOKEN? then .Environment.Variables.API_TOKEN = "REDACTED" else . end'
+        aws lambda update-function-code --function-name analysis-max-centerofmass-vpos --image-uri 660440363484.dkr.ecr.us-west-2.amazonaws.com/opencap-analysis/max_centerofmass_vpos:$IMAGE_TAG | jq 'if .Environment.Variables.API_TOKEN? then .Environment.Variables.API_TOKEN = "REDACTED" else . end'
