@@ -25,11 +25,11 @@
 #    and best practices on handling the access key credentials.
 
 on:
-#  push:
-#    branches:
-#      - main
-#    paths:
-#      - 'max_centerofmass_vpos/**'
+ push:
+   branches:
+     - dev
+   paths:
+     - 'max_centerofmass_vpos/**'
   workflow_dispatch:
 
 name: PROD Analysis "max centerofmass vpos" build & deployment
