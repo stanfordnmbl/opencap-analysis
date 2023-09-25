@@ -32,7 +32,7 @@ def handler(event, context):
         http://localhost:8080/2015-03-31/functions/function/invocations
     """
     # temporary placeholder
-    kwargs = json.loads(event['body'])
+    kwargs = json.loads(event['body']) if type(event) is str else event
 
     for field in ('session_id', 'specific_trial_names'):
         if field not in kwargs:
@@ -131,6 +131,7 @@ def handler(event, context):
         'statusCode': 200,
         'headers': {'Content-Type': 'application/json'},
         'body': {
-            'message': f'Gait speed - {gait_speed} m/s'
+            'message': f'Gait speed - {gait_speed} m/s',
+            'results': results,
         }
     }
