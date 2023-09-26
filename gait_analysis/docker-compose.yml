@@ -7,7 +7,6 @@ services:
       context: .
       dockerfile: ./Dockerfile
     ports:
-      - 9000:9000
+      - 9005:8080
     env_file:
       - ./.env
-    entrypoint: "python3.8 function.py"

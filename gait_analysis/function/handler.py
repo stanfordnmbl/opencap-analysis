@@ -32,7 +32,7 @@ def handler(event, context):
         http://localhost:8080/2015-03-31/functions/function/invocations
     """
     # temporary placeholder
-    kwargs = json.loads(event['body']) if type(event) is str else event
+    kwargs = json.loads(event['body']) if 'body' in event else event
 
     for field in ('session_id', 'specific_trial_names'):
         if field not in kwargs:
