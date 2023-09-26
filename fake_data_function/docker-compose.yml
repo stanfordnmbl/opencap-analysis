@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  fake_data_function:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 9005:8080
+    volumes:
+      - ./datasets:/datasets:cached

@@ -1,0 +1,17 @@
+{
+  "metrics": {
+    "walking_speed": {
+      "label": "Walking speed [km/h]",
+      "value": 1.42,
+      "ranges": [1.0, 2.0],
+      "colors": ["red", "yellow", "green"]
+    }
+  },
+  "datasets": [
+    {
+      "label": "knee_angle_r",
+      "data": [1, 2, 3]
+    }
+  ],
+  "labels": [0.00, 0.02, 0.03]
+}
