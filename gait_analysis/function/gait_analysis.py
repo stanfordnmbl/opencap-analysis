@@ -17,7 +17,6 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-
                 
 import numpy as np
 import pandas as pd
@@ -50,7 +49,7 @@ class gait_analysis(kinematics):
         self.nGaitCycles = np.shape(self.gaitEvents['ipsilateralIdx'])[0]
         
         # Determine treadmill speed (0 if overground).
-        self.treadmillSpeed = self.compute_treadmill_speed()
+        self.treadmillSpeed,_ = self.compute_treadmill_speed()
         
         # Initialize variables to be lazy loaded.
         self._comValues = None
@@ -92,7 +91,9 @@ class gait_analysis(kinematics):
         scalarDict = {}
         for scalarName in scalarNames:
             thisFunction = getattr(self, 'compute_' + scalarName)
-            scalarDict[scalarName] = thisFunction()
+            scalarDict[scalarName] = {}
+            (scalarDict[scalarName]['value'],
+                scalarDict[scalarName]['units']) = thisFunction()
         
         return scalarDict
     
@@ -113,7 +114,10 @@ class gait_analysis(kinematics):
         # Average across all strides.
         strideLength = np.mean(strideLength)
         
-        return strideLength
+        # Define units.
+        units = 'm'
+        
+        return strideLength, units
     
     def compute_gait_speed(self):
                            
@@ -127,17 +131,23 @@ class gait_analysis(kinematics):
         # Average across all strides.
         gait_speed = np.mean(gait_speed)
         
-        return gait_speed
+        # Define units.
+        units = 'm/s'
+        
+        return gait_speed, units
     
     def compute_cadence(self):
         
-        # In steps per second.
-        cadence = 1/np.diff(self.gaitEvents['ipsilateralTime'][:,(0,2)])
+        # In steps per minute.
+        cadence = 60*2/np.diff(self.gaitEvents['ipsilateralTime'][:,(0,2)])
         
         # Average across all strides.
         cadence = np.mean(cadence)
         
-        return cadence
+        # Define units.
+        units = 'steps/min'
+        
+        return cadence, units
     
     def compute_treadmill_speed(self, overground_speed_threshold=0.3):
         
@@ -160,8 +170,11 @@ class gait_analysis(kinematics):
         # Overground.
         if treadmillSpeed < overground_speed_threshold:
             treadmillSpeed = 0
+            
+        # Define units.
+        units = 'm/s'
                            
-        return treadmillSpeed
+        return treadmillSpeed, units
     
     def compute_step_width(self):
         
@@ -188,7 +201,10 @@ class gait_analysis(kinematics):
         # Average across all strides.
         stepWidth = np.mean(stepWidth)
         
-        return stepWidth
+        # Define units.
+        units = 'm'
+        
+        return stepWidth, units
     
     def compute_stance_time(self):
         
@@ -197,7 +213,10 @@ class gait_analysis(kinematics):
         # Average across all strides.
         stanceTime = np.mean(stanceTime)
         
-        return stanceTime
+        # Define units.
+        units = 's'
+        
+        return stanceTime, units
     
     def compute_swing_time(self):
         
@@ -206,7 +225,10 @@ class gait_analysis(kinematics):
         # Average across all strides.
         swingTime = np.mean(swingTime)
         
-        return swingTime
+        # Define units.
+        units = 's'
+        
+        return swingTime, units
     
     def compute_single_support_time(self):
         
@@ -216,7 +238,10 @@ class gait_analysis(kinematics):
         # Average across all strides.
         singleSupportTime = np.mean(singleSupportTime)
         
-        return singleSupportTime
+        # Define units.
+        units = 's'
+        
+        return singleSupportTime, units
         
     def compute_double_support_time(self):
         
@@ -228,7 +253,10 @@ class gait_analysis(kinematics):
         # Average across all strides.
         doubleSupportTime = np.mean(doubleSupportTime)
         
-        return doubleSupportTime
+        # Define units.
+        units = 's'
+        
+        return doubleSupportTime, units
             
     def compute_gait_frame(self):
 
