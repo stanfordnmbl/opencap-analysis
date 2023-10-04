@@ -20,6 +20,8 @@
 
 import os
 pathFile = os.path.dirname(os.path.realpath(__file__))
+import sys
+sys.path.append(os.path.join(pathFile, 'ActivityAnalyses'))
 
 import logging
 import opensim
