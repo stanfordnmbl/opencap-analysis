@@ -32,7 +32,7 @@ def handler(event, context):
         http://localhost:8080/2015-03-31/functions/function/invocations
     """
     # temporary placeholder
-    kwargs = json.loads(event['body']) if 'body' in event else event
+    kwargs = json.loads(event['body'])
 
     for field in ('session_id', 'specific_trial_names'):
         if field not in kwargs:
@@ -66,8 +66,17 @@ def handler(event, context):
     filter_frequency = 6
 
     # Select scalar names to compute.
-    scalar_names = {'gait_speed','stride_length','step_width','cadence',
-                    'single_support_time','double_support_time'}
+    scalar_names = {
+        'gait_speed','stride_length','step_width','cadence',
+        'single_support_time', 'double_support_time'}
+
+    scalar_labels = {
+        'gait_speed': "Gait speed (m/s)",
+        'stride_length':'Stride length (m)',
+        'step_width': 'Step width (m)',
+        'cadence': 'Cadence (steps/min)',
+        'single_support_time': 'Single support time (s)', 
+        'double_support_time': 'Double support time (s)'}
 
     # %% Process data.
     # Init gait analysis and get gait events.
@@ -87,51 +96,78 @@ def handler(event, context):
     # Compute scalars.
     gait_scalars = gait[last_leg].compute_scalars(scalar_names)
 
+    # %% Thresholds.
+    # metadataPath = os.path.join(sessionDir, 'sessionMetadata.yaml')
+    # metadata = import_metadata(metadataPath)
+    # subject_height = metadata['height_m']
+    gait_speed_threshold = 67/60
+    step_width_threshold = 0.25
+    stride_length_threshold = 1.4 # subject_height*0.4
+    cadence_threshold = 100
+    single_support_time_threshold = 0.4
+    double_support_time_threshold = 0.3
+    thresholds = {
+        'gait_speed': gait_speed_threshold,
+        'step_width': step_width_threshold,
+        'stride_length': stride_length_threshold,
+        'cadence': cadence_threshold,
+        'single_support_time': single_support_time_threshold,
+        'double_support_time': double_support_time_threshold}
+    # Whether below-threshold values should be colored in red (default) or green (reverse).
+    scalar_reverse_colors = ['step_width']
+
     # %% Return indices for visualizer and line curve plot.
+    # %% Create json for deployement.
+    # Indices / Times
     indices = {}
     indices['start'] = int(gait_events[last_leg]['ipsilateralIdx'][0,0])
     indices['end'] = int(gait_events[last_leg]['ipsilateralIdx'][0,-1])
+    times = {}
+    times['start'] = float(gait_events[last_leg]['ipsilateralTime'][0,0])
+    times['end'] = float(gait_events[last_leg]['ipsilateralTime'][0,-1])
 
-    # The visualizer in step 5 loads the file tagged `visualizerTransforms-json`.
-    # https://github.com/stanfordnmbl/opencap-viewer/blob/main/src/components/pages/Step5.vue#L973 
-    # For the gait dashboard, we should use the same file but play it from
-    # index indices['start'] to index indices['end'].
-
-    # The line curve chart loads the file tagged `ik_results`.
-    # https://github.com/stanfordnmbl/opencap-viewer/blob/main/src/components/pages/Dashboard.vue#L244
-    # https://github.com/stanfordnmbl/opencap-viewer/blob/main/src/components/pages/Dashboard.vue#L433
-    # For the gait dashboard, we should use the same file but play it from
-    # index indices['start'] to index indices['end'].
-
-    # Both files have the same number of frames. We want to display a vertical bar
-    # on the line curve chart that is temporarily aligned with the visualizer. Eg,
-    # when the visualizer displays frame #50, the vertical bar in the line curve
-    # chart should be at frame #50. The goal is to allow users to visualy compare
-    # what is happening in the visualizer (skeleton) with what is happening in the
-    # data (line curves). For example, when the left foot touches the ground, the
-    # angle of the knee is 10 degrees.
-
-    # %% Return gait metrics for scalar chart.
-    # Instructions for the frontend will come later.
-    gait_metrics = {}
+    # Metrics
+    metrics_out = {}
     for scalar_name in scalar_names:
-        gait_metrics[scalar_name] = np.round(gait_scalars[scalar_name], 2)
+        metrics_out[scalar_name] = {}
+        vertical_values = np.round(gait_scalars[scalar_name]['value'], 2)
+        metrics_out[scalar_name]['label'] = scalar_labels[scalar_name]
+        metrics_out[scalar_name]['value'] = vertical_values
+        if scalar_name in scalar_reverse_colors:
+            # Margin zone (orange) is 10% above threshold.
+            metrics_out[scalar_name]['colors'] = ["green", "yellow", "red"]
+            metrics_out[scalar_name]['min_limit'] = thresholds[scalar_name]        
+            metrics_out[scalar_name]['max_limit'] = thresholds[scalar_name]        
+        else:
+            # Margin zone (orange) is 10% below threshold.
+            metrics_out[scalar_name]['colors'] = ["red", "yellow", "green"]
+            metrics_out[scalar_name]['min_limit'] = 0.90*thresholds[scalar_name]
+            metrics_out[scalar_name]['max_limit'] = thresholds[scalar_name]
+            
+    # Datasets
+    colNames = gait[last_leg].coordinateValues.columns
+    data = gait[last_leg].coordinateValues.to_numpy()
+    coordValues = data[indices['start']:indices['end']]
+    datasets = []
+    for i in range(coordValues.shape[0]):
+        datasets.append({})
+        for j in range(coordValues.shape[1]):
+            datasets[i][colNames[j]] = coordValues[i,j]
+            
+    # Available options for line curve chart.
+    y_axes = list(colNames)
+    y_axes.remove('time')
 
-    # %% Dump data into json file.
-    # Create results dictionnary with indices and gait_metrics.
-    results = {'indices': indices, 'gait_metrics': gait_metrics}    
+    # Create results dictionnary.
+    results = {
+        'indices': times, 
+        'metrics': metrics_out, 
+        'datasets': datasets,
+        'x_axis': 'time', 
+        'y_axis': y_axes}
 
-    # TODO: push results dict to `Results` instance of the trial.
-    # with open('results.json', 'w') as outfile:
-    #     json.dump(results, outfile)
-
-    # Temporary placeholder.
-    gait_speed = gait_metrics['gait_speed']
     return {
         'statusCode': 200,
         'headers': {'Content-Type': 'application/json'},
-        'body': {
-            'message': f'Gait speed - {gait_speed} m/s',
-            'results': results,
-        }
+        'body': results
     }
