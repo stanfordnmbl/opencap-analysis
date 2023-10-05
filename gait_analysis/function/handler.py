@@ -147,7 +147,7 @@ def handler(event, context):
     # Datasets
     colNames = gait[last_leg].coordinateValues.columns
     data = gait[last_leg].coordinateValues.to_numpy()
-    coordValues = data[indices['start']:indices['end']+1]
+    coordValues = data[indices['start']-10:indices['end']+10]
     datasets = []
     for i in range(coordValues.shape[0]):
         datasets.append({})
