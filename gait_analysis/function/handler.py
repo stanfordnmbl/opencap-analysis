@@ -136,18 +136,18 @@ def handler(event, context):
         if scalar_name in scalar_reverse_colors:
             # Margin zone (orange) is 10% above threshold.
             metrics_out[scalar_name]['colors'] = ["green", "yellow", "red"]
-            metrics_out[scalar_name]['min_limit'] = thresholds[scalar_name]        
-            metrics_out[scalar_name]['max_limit'] = thresholds[scalar_name]        
+            metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name],2))
+            metrics_out[scalar_name]['max_limit'] = float(np.round(1.10*thresholds[scalar_name],2))
         else:
             # Margin zone (orange) is 10% below threshold.
             metrics_out[scalar_name]['colors'] = ["red", "yellow", "green"]
-            metrics_out[scalar_name]['min_limit'] = 0.90*thresholds[scalar_name]
-            metrics_out[scalar_name]['max_limit'] = thresholds[scalar_name]
+            metrics_out[scalar_name]['min_limit'] = float(np.round(0.90*thresholds[scalar_name],2))
+            metrics_out[scalar_name]['max_limit'] = float(np.round(thresholds[scalar_name],2))
             
     # Datasets
     colNames = gait[last_leg].coordinateValues.columns
     data = gait[last_leg].coordinateValues.to_numpy()
-    coordValues = data[indices['start']-10:indices['end']+10]
+    coordValues = data[indices['start']:indices['end']+1]
     datasets = []
     for i in range(coordValues.shape[0]):
         datasets.append({})
