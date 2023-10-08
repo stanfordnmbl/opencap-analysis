@@ -22,7 +22,7 @@ import os
 import numpy as np
 
 from gait_analysis import gait_analysis
-from utils import get_trial_id, download_trial
+from utils import get_trial_id, download_trial, import_metadata
 
 
 def handler(event, context):
@@ -68,15 +68,16 @@ def handler(event, context):
     # Select scalar names to compute.
     scalar_names = {
         'gait_speed','stride_length','step_width','cadence',
-        'single_support_time', 'double_support_time'}
+        'single_support_time', 'double_support_time','step_length_symmetry'}
 
     scalar_labels = {
-        'gait_speed': "Gait speed (m/s)",
-        'stride_length':'Stride length (m)',
-        'step_width': 'Step width (m)',
-        'cadence': 'Cadence (steps/min)',
-        'single_support_time': 'Single support time (s)', 
-        'double_support_time': 'Double support time (s)'}
+                 'gait_speed': "Gait speed (m/s)",
+                 'stride_length':'Stride length (m)',
+                 'step_width': 'Step width (m)',
+                 'cadence': 'Cadence (steps/min)',
+                 'single_support_time': 'Single support time (% gait cycle)', 
+                 'double_support_time': 'Double support time (% gait cycle)',
+                 'step_length_symmetry': 'Step length symmetry (%, R/L)'}
 
     # %% Process data.
     # Init gait analysis and get gait events.
@@ -97,24 +98,28 @@ def handler(event, context):
     gait_scalars = gait[last_leg].compute_scalars(scalar_names)
 
     # %% Thresholds.
-    # metadataPath = os.path.join(sessionDir, 'sessionMetadata.yaml')
-    # metadata = import_metadata(metadataPath)
-    # subject_height = metadata['height_m']
+    metadataPath = os.path.join(sessionDir, 'sessionMetadata.yaml')
+    metadata = import_metadata(metadataPath)
+    subject_height = metadata['height_m']
     gait_speed_threshold = 67/60
-    step_width_threshold = 0.25
-    stride_length_threshold = 1.4 # subject_height*0.4
+    step_width_threshold = 0.14
+    stride_length_threshold = subject_height * .57
     cadence_threshold = 100
-    single_support_time_threshold = 0.4
-    double_support_time_threshold = 0.3
+    single_support_time_threshold = 65
+    double_support_time_threshold = 35
+    step_length_symmetry_threshold = [90,110]
     thresholds = {
-        'gait_speed': gait_speed_threshold,
-        'step_width': step_width_threshold,
-        'stride_length': stride_length_threshold,
-        'cadence': cadence_threshold,
-        'single_support_time': single_support_time_threshold,
-        'double_support_time': double_support_time_threshold}
+              'gait_speed': gait_speed_threshold,
+              'step_width': step_width_threshold,
+              'stride_length': stride_length_threshold,
+              'cadence': cadence_threshold,
+              'single_support_time': single_support_time_threshold,
+              'double_support_time': double_support_time_threshold,
+              'step_length_symmetry': step_length_symmetry_threshold}
     # Whether below-threshold values should be colored in red (default) or green (reverse).
-    scalar_reverse_colors = ['step_width']
+    scalar_reverse_colors = ['step_width', 'double_support_time']
+    # Wthether should be red-green-red plot
+    scalar_centered = ['step_length_symmetry']
 
     # %% Return indices for visualizer and line curve plot.
     # %% Create json for deployement.
@@ -138,6 +143,11 @@ def handler(event, context):
             metrics_out[scalar_name]['colors'] = ["green", "yellow", "red"]
             metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name],2))
             metrics_out[scalar_name]['max_limit'] = float(np.round(1.10*thresholds[scalar_name],2))
+        elif scalar_name in scalar_centered:
+            # Red, green, red
+            metrics_out[scalar_name]['colors'] = ["red", "green", "red"]
+            metrics_out[scalar_name]['min_limit'] = thresholds[scalar_name][0]        
+            metrics_out[scalar_name]['max_limit'] = thresholds[scalar_name][1] 
         else:
             # Margin zone (orange) is 10% below threshold.
             metrics_out[scalar_name]['colors'] = ["red", "yellow", "green"]
