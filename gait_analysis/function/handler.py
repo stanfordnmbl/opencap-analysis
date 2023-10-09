@@ -68,14 +68,15 @@ def handler(event, context):
     # Select scalar names to compute.
     scalar_names = {
         'gait_speed','stride_length','step_width','cadence',
-        'single_support_time', 'double_support_time','step_length_symmetry'}
+        'double_support_time','step_length_symmetry'}
+    # 'single_support_time', 
 
     scalar_labels = {
                  'gait_speed': "Gait speed (m/s)",
                  'stride_length':'Stride length (m)',
                  'step_width': 'Step width (m)',
                  'cadence': 'Cadence (steps/min)',
-                 'single_support_time': 'Single support time (% gait cycle)', 
+                #  'single_support_time': 'Single support time (% gait cycle)', 
                  'double_support_time': 'Double support time (% gait cycle)',
                  'step_length_symmetry': 'Step length symmetry (%, R/L)'}
 
@@ -105,7 +106,7 @@ def handler(event, context):
     step_width_threshold = 0.14
     stride_length_threshold = subject_height * .57
     cadence_threshold = 100
-    single_support_time_threshold = 65
+    # single_support_time_threshold = 65
     double_support_time_threshold = 35
     step_length_symmetry_threshold = [90,110]
     thresholds = {
@@ -113,12 +114,12 @@ def handler(event, context):
               'step_width': step_width_threshold,
               'stride_length': stride_length_threshold,
               'cadence': cadence_threshold,
-              'single_support_time': single_support_time_threshold,
+            #   'single_support_time': single_support_time_threshold,
               'double_support_time': double_support_time_threshold,
               'step_length_symmetry': step_length_symmetry_threshold}
     # Whether below-threshold values should be colored in red (default) or green (reverse).
     scalar_reverse_colors = ['step_width', 'double_support_time']
-    # Wthether should be red-green-red plot
+    # Whether should be red-green-red plot
     scalar_centered = ['step_length_symmetry']
 
     # %% Return indices for visualizer and line curve plot.
@@ -146,8 +147,8 @@ def handler(event, context):
         elif scalar_name in scalar_centered:
             # Red, green, red
             metrics_out[scalar_name]['colors'] = ["red", "green", "red"]
-            metrics_out[scalar_name]['min_limit'] = thresholds[scalar_name][0]        
-            metrics_out[scalar_name]['max_limit'] = thresholds[scalar_name][1] 
+            metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name][0],2))        
+            metrics_out[scalar_name]['max_limit'] = float(np.round(thresholds[scalar_name][1],2)) 
         else:
             # Margin zone (orange) is 10% below threshold.
             metrics_out[scalar_name]['colors'] = ["red", "yellow", "green"]
