@@ -104,7 +104,7 @@ def handler(event, context):
     subject_height = metadata['height_m']
     gait_speed_threshold = 67/60
     step_width_threshold = 0.14
-    stride_length_threshold = subject_height * .57
+    stride_length_threshold = subject_height * .45
     cadence_threshold = 100
     # single_support_time_threshold = 65
     double_support_time_threshold = 35
