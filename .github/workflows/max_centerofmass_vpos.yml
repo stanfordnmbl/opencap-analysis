@@ -27,7 +27,7 @@
 on:
   push:
     branches:
-      - dev
+      - main
     paths:
       - 'max_centerofmass_vpos/**'
   workflow_dispatch:
