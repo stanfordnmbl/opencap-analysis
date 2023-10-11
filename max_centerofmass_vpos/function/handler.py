@@ -21,8 +21,8 @@ import json
 import os
 import numpy as np
 
-from utilsKinematics import Kinematics
-from utils import download_kinematics
+from utilsKinematics import kinematics
+from utils import get_trial_id, download_trial
 
 
 def handler(event, context):
@@ -53,25 +53,20 @@ def handler(event, context):
     specific_trial_names = kwargs['specific_trial_names']
 
     # Specify where to download the data.
-    data_folder = os.path.join("/tmp/Data", session_id)
+    sessionDir = os.path.join("/tmp/Data", session_id)
 
     # %% Download data.
-    trial_names, modelName = download_kinematics(session_id, folder=data_folder, trialNames=specific_trial_names)
+    trial_id = get_trial_id(session_id,specific_trial_names[0])
+    trial_name = download_trial(trial_id,sessionDir,session_id=session_id) 
 
     # %% Process data.
-    kinematics, center_of_mass = {}, {}
-    center_of_mass['values'] = {}
-    for trial_name in trial_names:
-        # Create object from class kinematics.
-        kinematics[trial_name] = Kinematics(
-            data_folder, trial_name, modelName=modelName, lowpass_cutoff_frequency_for_coordinate_values=10
-        )    
-        # Get center of mass values, speeds, and accelerations.
-        center_of_mass['values'][trial_name] = kinematics[trial_name].get_center_of_mass_values(
-            lowpass_cutoff_frequency=10
-        )
-    
-    max_center_of_mass = np.round(np.max(center_of_mass['values'][trial_names[0]]['y']), 2)
+    # Create object from class kinematics.
+    kinematics_obj = kinematics(
+        sessionDir, trial_name, lowpass_cutoff_frequency_for_coordinate_values=10)    
+    # Get center of mass values.
+    center_of_mass = kinematics_obj.get_center_of_mass_values(lowpass_cutoff_frequency=10)
+    # Get maximal center of mass vertical position.
+    max_center_of_mass = np.round(np.max(center_of_mass['y']), 2)
     return {
         'statusCode': 200,
         'headers': {'Content-Type': 'application/json'},

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  max_centerofmass_vpos:
+  gait_analysis:
 #    platform: linux/amd64
     build:
       context: .
