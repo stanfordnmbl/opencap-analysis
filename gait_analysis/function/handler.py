@@ -74,7 +74,7 @@ def handler(event, context):
     scalar_labels = {
                  'gait_speed': "Gait speed (m/s)",
                  'stride_length':'Stride length (m)',
-                 'step_width': 'Step width (m)',
+                 'step_width': 'Step width (cm)',
                  'cadence': 'Cadence (steps/min)',
                 #  'single_support_time': 'Single support time (% gait cycle)', 
                  'double_support_time': 'Double support (% gait cycle)',
@@ -110,7 +110,7 @@ def handler(event, context):
     metadata = import_metadata(metadataPath)
     subject_height = metadata['height_m']
     gait_speed_threshold = 67/60
-    step_width_threshold = 0.14
+    step_width_threshold = [4.3*subject_height, 7.4*subject_height]
     stride_length_threshold = subject_height * .45
     cadence_threshold = 100
     # single_support_time_threshold = 65
@@ -125,9 +125,9 @@ def handler(event, context):
               'double_support_time': {'value': double_support_time_threshold, 'decimal': 1},
               'step_length_symmetry': {'value': step_length_symmetry_threshold, 'decimal': 1}}
     # Whether below-threshold values should be colored in red (default) or green (reverse).
-    scalar_reverse_colors = ['step_width', 'double_support_time']
+    scalar_reverse_colors = ['double_support_time']
     # Whether should be red-green-red plot
-    scalar_centered = ['step_length_symmetry']
+    scalar_centered = ['step_length_symmetry','step_width']
 
     # %% Return indices for visualizer and line curve plot.
     # %% Create json for deployement.
