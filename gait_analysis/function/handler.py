@@ -77,7 +77,7 @@ def handler(event, context):
                  'step_width': 'Step width (m)',
                  'cadence': 'Cadence (steps/min)',
                 #  'single_support_time': 'Single support time (% gait cycle)', 
-                 'double_support_time': 'Double support time (% gait cycle)',
+                 'double_support_time': 'Double support (% gait cycle)',
                  'step_length_symmetry': 'Step length symmetry (%, R/L)'}
 
     # %% Process data.
@@ -98,25 +98,32 @@ def handler(event, context):
     # Compute scalars.
     gait_scalars = gait[last_leg].compute_scalars(scalar_names)
 
+    gait_scalars['gait_speed']['decimal'] = 2
+    gait_scalars['step_width']['decimal'] = 2
+    gait_scalars['stride_length']['decimal'] = 2
+    gait_scalars['cadence']['decimal'] = 1
+    gait_scalars['double_support_time']['decimal'] = 1
+    gait_scalars['step_length_symmetry']['decimal'] = 1
+
     # %% Thresholds.
     metadataPath = os.path.join(sessionDir, 'sessionMetadata.yaml')
     metadata = import_metadata(metadataPath)
     subject_height = metadata['height_m']
     gait_speed_threshold = 67/60
     step_width_threshold = 0.14
-    stride_length_threshold = subject_height * .57
+    stride_length_threshold = subject_height * .45
     cadence_threshold = 100
     # single_support_time_threshold = 65
     double_support_time_threshold = 35
     step_length_symmetry_threshold = [90,110]
     thresholds = {
-              'gait_speed': gait_speed_threshold,
-              'step_width': step_width_threshold,
-              'stride_length': stride_length_threshold,
-              'cadence': cadence_threshold,
+              'gait_speed': {'value': gait_speed_threshold, 'decimal': 2},
+              'step_width': {'value': step_width_threshold, 'decimal': 2},
+              'stride_length': {'value': stride_length_threshold, 'decimal': 2},
+              'cadence': {'value': cadence_threshold, 'decimal': 1},
             #   'single_support_time': single_support_time_threshold,
-              'double_support_time': double_support_time_threshold,
-              'step_length_symmetry': step_length_symmetry_threshold}
+              'double_support_time': {'value': double_support_time_threshold, 'decimal': 1},
+              'step_length_symmetry': {'value': step_length_symmetry_threshold, 'decimal': 1}}
     # Whether below-threshold values should be colored in red (default) or green (reverse).
     scalar_reverse_colors = ['step_width', 'double_support_time']
     # Whether should be red-green-red plot
@@ -136,24 +143,24 @@ def handler(event, context):
     metrics_out = {}
     for scalar_name in scalar_names:
         metrics_out[scalar_name] = {}
-        vertical_values = np.round(gait_scalars[scalar_name]['value'], 2)
+        vertical_values = np.round(gait_scalars[scalar_name]['value'], gait_scalars[scalar_name]['decimal'])
         metrics_out[scalar_name]['label'] = scalar_labels[scalar_name]
         metrics_out[scalar_name]['value'] = vertical_values
         if scalar_name in scalar_reverse_colors:
             # Margin zone (orange) is 10% above threshold.
             metrics_out[scalar_name]['colors'] = ["green", "yellow", "red"]
-            metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name],2))
-            metrics_out[scalar_name]['max_limit'] = float(np.round(1.10*thresholds[scalar_name],2))
+            metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name]['value'],thresholds[scalar_name]['decimal']))
+            metrics_out[scalar_name]['max_limit'] = float(np.round(1.10*thresholds[scalar_name]['value'],thresholds[scalar_name]['decimal']))
         elif scalar_name in scalar_centered:
             # Red, green, red
             metrics_out[scalar_name]['colors'] = ["red", "green", "red"]
-            metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name][0],2))        
-            metrics_out[scalar_name]['max_limit'] = float(np.round(thresholds[scalar_name][1],2)) 
+            metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name]['value'][0],thresholds[scalar_name]['decimal']))        
+            metrics_out[scalar_name]['max_limit'] = float(np.round(thresholds[scalar_name]['value'][1],thresholds[scalar_name]['decimal'])) 
         else:
             # Margin zone (orange) is 10% below threshold.
             metrics_out[scalar_name]['colors'] = ["red", "yellow", "green"]
-            metrics_out[scalar_name]['min_limit'] = float(np.round(0.90*thresholds[scalar_name],2))
-            metrics_out[scalar_name]['max_limit'] = float(np.round(thresholds[scalar_name],2))
+            metrics_out[scalar_name]['min_limit'] = float(np.round(0.90*thresholds[scalar_name]['value'],thresholds[scalar_name]['decimal']))
+            metrics_out[scalar_name]['max_limit'] = float(np.round(thresholds[scalar_name]['value'],thresholds[scalar_name]['decimal']))
             
     # Datasets
     colNames = gait[last_leg].coordinateValues.columns
