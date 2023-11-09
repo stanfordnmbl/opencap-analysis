@@ -44,33 +44,33 @@ def handler(event, context):
 
     # %% User inputs.
     # Specify session id; see end of url in app.opencap.ai/session/<session_id>.
-    # session_id = "bd61b3a6-813d-411c-8067-92315b3d4e0d"
+    # session_id = "8e430ad2-989c-4354-a6f1-7eb21fa0a16e"
     session_id = kwargs['session_id']
-
+    
     # Specify trial names in a list; use None to process all trials in a session.
-    # specific_trial_names = ['test']
+    # specific_trial_names = ['walk']
     specific_trial_names = kwargs['specific_trial_names']
-
+    
     # Specify where to download the data.
     sessionDir = os.path.join("/tmp/Data", session_id)
-
+    
     # %% Download data.
     trial_id = get_trial_id(session_id,specific_trial_names[0])
     trial_name = download_trial(trial_id,sessionDir,session_id=session_id) 
-
+    
     # Select how many gait cycles you'd like to analyze. Select -1 for all gait
     # cycles detected in the trial.
     n_gait_cycles = 1
-
+    
     # Select lowpass filter frequency for kinematics data.
     filter_frequency = 6
-
+    
     # Select scalar names to compute.
     scalar_names = {
         'gait_speed','stride_length','step_width','cadence',
         'double_support_time','step_length_symmetry'}
     # 'single_support_time', 
-
+    
     scalar_labels = {
                  'gait_speed': "Gait speed (m/s)",
                  'stride_length':'Stride length (m)',
@@ -79,7 +79,7 @@ def handler(event, context):
                 #  'single_support_time': 'Single support time (% gait cycle)', 
                  'double_support_time': 'Double support (% gait cycle)',
                  'step_length_symmetry': 'Step length symmetry (%, R/L)'}
-
+    
     # %% Process data.
     # Init gait analysis and get gait events.
     legs = ['r','l']
@@ -91,24 +91,27 @@ def handler(event, context):
             n_gait_cycles=n_gait_cycles)
         gait_events[leg] = gait[leg].get_gait_events()
         ipsilateral[leg] = gait_events[leg]['ipsilateralTime'][0,-1]
-
+    
     # Select last leg.
     last_leg = 'r' if ipsilateral['r'] > ipsilateral['l'] else 'l'
-
+    
     # Compute scalars.
     gait_scalars = gait[last_leg].compute_scalars(scalar_names)
-
+    
     gait_scalars['gait_speed']['decimal'] = 2
-    gait_scalars['step_width']['decimal'] = 2
+    gait_scalars['step_width']['decimal'] = 1
     gait_scalars['stride_length']['decimal'] = 2
     gait_scalars['cadence']['decimal'] = 1
     gait_scalars['double_support_time']['decimal'] = 1
     gait_scalars['step_length_symmetry']['decimal'] = 1
     
     # Change units
-    gait_scalars = {key: {'multiplier': 1} for key in gait_scalars}
+    # Default = 1
+    for key in gait_scalars:
+        gait_scalars[key]['multiplier'] = 1
+    
     gait_scalars['step_width']['multiplier'] = 100 # cm
-
+    
     # %% Thresholds.
     metadataPath = os.path.join(sessionDir, 'sessionMetadata.yaml')
     metadata = import_metadata(metadataPath)
@@ -122,7 +125,7 @@ def handler(event, context):
     step_length_symmetry_threshold = [90,110]
     thresholds = {
               'gait_speed': {'value': gait_speed_threshold, 'decimal': 2},
-              'step_width': {'value': step_width_threshold, 'decimal': 2},
+              'step_width': {'value': step_width_threshold, 'decimal': 1},
               'stride_length': {'value': stride_length_threshold, 'decimal': 2},
               'cadence': {'value': cadence_threshold, 'decimal': 1},
             #   'single_support_time': single_support_time_threshold,
@@ -132,7 +135,7 @@ def handler(event, context):
     scalar_reverse_colors = ['double_support_time']
     # Whether should be red-green-red plot
     scalar_centered = ['step_length_symmetry','step_width']
-
+    
     # %% Return indices for visualizer and line curve plot.
     # %% Create json for deployement.
     # Indices / Times
@@ -142,7 +145,7 @@ def handler(event, context):
     times = {}
     times['start'] = float(gait_events[last_leg]['ipsilateralTime'][0,0])
     times['end'] = float(gait_events[last_leg]['ipsilateralTime'][0,-1])
-
+    
     # Metrics
     metrics_out = {}
     for scalar_name in scalar_names:
@@ -181,7 +184,7 @@ def handler(event, context):
     # Available options for line curve chart.
     y_axes = list(colNames)
     y_axes.remove('time')
-
+    
     # Create results dictionnary.
     results = {
         'indices': times, 
@@ -189,7 +192,7 @@ def handler(event, context):
         'datasets': datasets,
         'x_axis': 'time', 
         'y_axis': y_axes}
-
+    
     return {
         'statusCode': 200,
         'headers': {'Content-Type': 'application/json'},
