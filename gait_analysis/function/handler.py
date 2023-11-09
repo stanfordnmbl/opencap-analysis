@@ -104,6 +104,10 @@ def handler(event, context):
     gait_scalars['cadence']['decimal'] = 1
     gait_scalars['double_support_time']['decimal'] = 1
     gait_scalars['step_length_symmetry']['decimal'] = 1
+    
+    # Change units
+    gait_scalars = {key: {'multiplier': 1} for key in gait_scalars}
+    gait_scalars['step_width']['multiplier'] = 100 # cm
 
     # %% Thresholds.
     metadataPath = os.path.join(sessionDir, 'sessionMetadata.yaml')
@@ -143,7 +147,9 @@ def handler(event, context):
     metrics_out = {}
     for scalar_name in scalar_names:
         metrics_out[scalar_name] = {}
-        vertical_values = np.round(gait_scalars[scalar_name]['value'], gait_scalars[scalar_name]['decimal'])
+        vertical_values = np.round(gait_scalars[scalar_name]['value'] *
+                                   gait_scalars[scalar_name]['multiplier'], 
+                                   gait_scalars[scalar_name]['decimal'])
         metrics_out[scalar_name]['label'] = scalar_labels[scalar_name]
         metrics_out[scalar_name]['value'] = vertical_values
         if scalar_name in scalar_reverse_colors:
