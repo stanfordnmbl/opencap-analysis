@@ -179,11 +179,16 @@ def handler(event, context):
     for i in range(coordValues.shape[0]):
         datasets.append({})
         for j in range(coordValues.shape[1]):
+            # Exclude knee_angle_r_beta and knee_angle_l_beta
+            if 'beta' in colNames[j]:
+                continue
             datasets[i][colNames[j]] = coordValues[i,j]
             
     # Available options for line curve chart.
     y_axes = list(colNames)
     y_axes.remove('time')
+    y_axes.remove('knee_angle_r_beta')
+    y_axes.remove('knee_angle_l_beta')
     
     # Create results dictionnary.
     results = {
