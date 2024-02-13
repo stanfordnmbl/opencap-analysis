@@ -82,18 +82,17 @@ def handler(event, context):
     
     # %% Process data.
     # Init gait analysis and get gait events.
-    legs = ['r','l']
-    gait, gait_events, ipsilateral = {}, {}, {}
+    legs = ['r']
+    gait, gait_events = {}, {}
     for leg in legs:
         gait[leg] = gait_analysis(
             sessionDir, trial_name, leg=leg,
             lowpass_cutoff_frequency_for_coordinate_values=filter_frequency,
             n_gait_cycles=n_gait_cycles)
         gait_events[leg] = gait[leg].get_gait_events()
-        ipsilateral[leg] = gait_events[leg]['ipsilateralTime'][0,-1]
     
     # Select last leg.
-    last_leg = 'r' if ipsilateral['r'] > ipsilateral['l'] else 'l'
+    last_leg = 'r'
     
     # Compute scalars.
     gait_scalars = gait[last_leg].compute_scalars(scalar_names)
@@ -180,7 +179,7 @@ def handler(event, context):
         datasets.append({})
         for j in range(coordValues.shape[1]):
             # Exclude knee_angle_r_beta and knee_angle_l_beta
-            if 'beta' in colNames[j]:
+            if 'beta' in colNames[j] or 'mtp' in colNames[j]:
                 continue
             datasets[i][colNames[j]] = coordValues[i,j]
             
@@ -189,6 +188,8 @@ def handler(event, context):
     y_axes.remove('time')
     y_axes.remove('knee_angle_r_beta')
     y_axes.remove('knee_angle_l_beta')
+    y_axes.remove('mtp_angle_r')
+    y_axes.remove('mtp_angle_l')
     
     # Create results dictionnary.
     results = {
