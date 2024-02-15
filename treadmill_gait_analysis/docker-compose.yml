@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  gait_analysis:
+#    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 9005:8080
+    env_file:
+      - ./.env
