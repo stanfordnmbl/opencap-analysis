@@ -88,7 +88,8 @@ def handler(event, context):
         gait[leg] = gait_analysis(
             sessionDir, trial_name, leg=leg,
             lowpass_cutoff_frequency_for_coordinate_values=filter_frequency,
-            n_gait_cycles=n_gait_cycles)
+            n_gait_cycles=n_gait_cycles, gait_style='overground',
+            trimming_start=0, trimming_end=0.5)
         gait_events[leg] = gait[leg].get_gait_events()
     
     # Select last leg.
