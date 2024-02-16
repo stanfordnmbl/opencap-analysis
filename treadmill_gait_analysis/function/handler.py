@@ -60,7 +60,7 @@ def handler(event, context):
     
     # Select how many gait cycles you'd like to analyze. Select -1 for all gait
     # cycles detected in the trial.
-    n_gait_cycles = 1
+    n_gait_cycles = -1
     
     # Select lowpass filter frequency for kinematics data.
     filter_frequency = 6
@@ -88,8 +88,7 @@ def handler(event, context):
         gait[leg] = gait_analysis(
             sessionDir, trial_name, leg=leg,
             lowpass_cutoff_frequency_for_coordinate_values=filter_frequency,
-            n_gait_cycles=n_gait_cycles, gait_style='overground',
-            trimming_start=0, trimming_end=0.5)
+            n_gait_cycles=n_gait_cycles, gait_style='treadmill')
         gait_events[leg] = gait[leg].get_gait_events()
     
     # Select last leg.
@@ -140,10 +139,10 @@ def handler(event, context):
     # %% Create json for deployement.
     # Indices / Times
     indices = {}
-    indices['start'] = int(gait_events[last_leg]['ipsilateralIdx'][0,0])
+    indices['start'] = int(gait_events[last_leg]['ipsilateralIdx'][-1,0])
     indices['end'] = int(gait_events[last_leg]['ipsilateralIdx'][0,-1])
     times = {}
-    times['start'] = float(gait_events[last_leg]['ipsilateralTime'][0,0])
+    times['start'] = float(gait_events[last_leg]['ipsilateralTime'][-1,0])
     times['end'] = float(gait_events[last_leg]['ipsilateralTime'][0,-1])
     
     # Metrics
