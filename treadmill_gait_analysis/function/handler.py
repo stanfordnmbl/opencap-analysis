@@ -115,7 +115,7 @@ def handler(event, context):
     gait_scalars['gait_speed']['info'] = "Gait speed is computed by dividing the displacement of the center of mass by the time it takes to move that distance. A speed larger than 1.12 m/s is considered good."
     gait_scalars['step_width']['info'] = "Step width is computed as the average distance between the ankle joint centers in the mediolateral direction during 40-60% of the stance phase. A step width between 4.3 and 7.4 times the subject's height is considered good."
     gait_scalars['stride_length']['info'] = "Stride length is computed as the distance between the calcaneus positions at the beginning and end of the gait cycle. A stride length larger than 0.45 times the subject's height is considered good."
-    gait_scalars['cadence']['decinfoimal'] = "Cadence is computed as the number of gait cycles (left and right) per minute. A cadence larger than 100 is considered good."
+    gait_scalars['cadence']['info'] = "Cadence is computed as the number of gait cycles (left and right) per minute. A cadence larger than 100 is considered good."
     gait_scalars['double_support_time']['info'] = "Double support time is computed as the duration when both feet are in contact with the ground. A double support time smaller than 35% of the gait cycle is considered good."
     gait_scalars['step_length_symmetry']['info'] = "Step length symmetry is computed as the ratio between the right and left step lengths. A step length symmetry between 90 and 110 is considered good."
     
