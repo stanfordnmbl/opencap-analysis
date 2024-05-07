@@ -66,19 +66,16 @@ def handler(event, context):
     filter_frequency = 6
     
     # Select scalar names to compute.
-    scalar_names = {
-        'gait_speed','stride_length','step_width','cadence',
-        'double_support_time','step_length_symmetry'}
-    # 'single_support_time', 
-    
-    scalar_labels = {
-                 'gait_speed': "Gait speed (m/s)",
-                 'stride_length':'Stride length (m)',
-                 'step_width': 'Step width (cm)',
-                 'cadence': 'Cadence (steps/min)',
-                #  'single_support_time': 'Single support time (% gait cycle)', 
-                 'double_support_time': 'Double support (% gait cycle)',
-                 'step_length_symmetry': 'Step length symmetry (%, R/L)'}
+    scalars = {
+        'gait_speed': {'label': 'Gait speed (m/s)', 'order': 0},
+        'stride_length': {'label': 'Stride length (m)', 'order': 1},
+        'step_width': {'label': 'Step width (cm)', 'order': 2},
+        'cadence': {'label': 'Cadence (steps/min)', 'order': 3},
+        'double_support_time': {'label': 'Double support (% gait cycle)', 'order': 4},
+        'step_length_symmetry': {'label': 'Step length symmetry (%, R/L)', 'order': 5},
+        # 'single_support_time': {'label': 'Single support time (% gait cycle)', 'order': 6}, 
+    }
+    scalar_names = list(scalars.keys())
     
     # %% Process data.
     # Init gait analysis and get gait events.
@@ -97,27 +94,26 @@ def handler(event, context):
     # Compute scalars.
     gait_scalars = gait[last_leg].compute_scalars(scalar_names)
     
-    gait_scalars['gait_speed']['decimal'] = 2
-    gait_scalars['step_width']['decimal'] = 1
-    gait_scalars['stride_length']['decimal'] = 2
-    gait_scalars['cadence']['decimal'] = 1
-    gait_scalars['double_support_time']['decimal'] = 1
-    gait_scalars['step_length_symmetry']['decimal'] = 1
+    scalars['gait_speed']['decimal'] = 2
+    scalars['step_width']['decimal'] = 1
+    scalars['stride_length']['decimal'] = 2
+    scalars['cadence']['decimal'] = 1
+    scalars['double_support_time']['decimal'] = 1
+    scalars['step_length_symmetry']['decimal'] = 1
     
     # Change units
     # Default = 1
-    for key in gait_scalars:
-        gait_scalars[key]['multiplier'] = 1
-    
-    gait_scalars['step_width']['multiplier'] = 100 # cm
+    for scalar_name in scalar_names:
+        scalars[scalar_name]['multiplier'] = 1
+    scalars['step_width']['multiplier'] = 100 # cm
 
     # %% Info about metrics.
-    gait_scalars['gait_speed']['info'] = "Gait speed is computed by dividing the displacement of the center of mass by the time it takes to move that distance. A speed larger than 1.12 m/s is considered good."
-    gait_scalars['step_width']['info'] = "Step width is computed as the average distance between the ankle joint centers in the mediolateral direction during 40-60% of the stance phase. A step width between 4.3 and 7.4 times the subject's height is considered good."
-    gait_scalars['stride_length']['info'] = "Stride length is computed as the distance between the calcaneus positions at the beginning and end of the gait cycle. A stride length larger than 0.45 times the subject's height is considered good."
-    gait_scalars['cadence']['info'] = "Cadence is computed as the number of gait cycles (left and right) per minute. A cadence larger than 100 is considered good."
-    gait_scalars['double_support_time']['info'] = "Double support time is computed as the duration when both feet are in contact with the ground. A double support time smaller than 35% of the gait cycle is considered good."
-    gait_scalars['step_length_symmetry']['info'] = "Step length symmetry is computed as the ratio between the right and left step lengths. A step length symmetry between 90 and 110 is considered good."
+    scalars['gait_speed']['info'] = "Gait speed is computed by dividing the displacement of the center of mass by the time it takes to move that distance. A speed larger than 1.12 m/s is considered good."
+    scalars['step_width']['info'] = "Step width is computed as the average distance between the ankle joint centers in the mediolateral direction during 40-60% of the stance phase. A step width between 4.3 and 7.4 times the subject's height is considered good."
+    scalars['stride_length']['info'] = "Stride length is computed as the distance between the calcaneus positions at the beginning and end of the gait cycle. A stride length larger than 0.45 times the subject's height is considered good."
+    scalars['cadence']['info'] = "Cadence is computed as the number of gait cycles (left and right) per minute. A cadence larger than 100 is considered good."
+    scalars['double_support_time']['info'] = "Double support time is computed as the duration when both feet are in contact with the ground. A double support time smaller than 35% of the gait cycle is considered good."
+    scalars['step_length_symmetry']['info'] = "Step length symmetry is computed as the ratio between the right and left step lengths. A step length symmetry between 90 and 110 is considered good."
     
     # %% Thresholds.
     metadataPath = os.path.join(sessionDir, 'sessionMetadata.yaml')
@@ -130,18 +126,21 @@ def handler(event, context):
     # single_support_time_threshold = 65
     double_support_time_threshold = 35
     step_length_symmetry_threshold = [90,110]
-    thresholds = {
-              'gait_speed': {'value': gait_speed_threshold, 'decimal': 2},
-              'step_width': {'value': step_width_threshold, 'decimal': 1},
-              'stride_length': {'value': stride_length_threshold, 'decimal': 2},
-              'cadence': {'value': cadence_threshold, 'decimal': 1},
-            #   'single_support_time': single_support_time_threshold,
-              'double_support_time': {'value': double_support_time_threshold, 'decimal': 1},
-              'step_length_symmetry': {'value': step_length_symmetry_threshold, 'decimal': 1}}
+
+    scalars['gait_speed']['threshold'] = gait_speed_threshold
+    scalars['step_width']['threshold'] = step_width_threshold
+    scalars['stride_length']['threshold'] = stride_length_threshold
+    scalars['cadence']['threshold'] = cadence_threshold
+    scalars['double_support_time']['threshold'] = double_support_time_threshold
+    scalars['step_length_symmetry']['threshold'] = step_length_symmetry_threshold
+    # scalars['single_support_time']['threshold'] = single_support_time_threshold
+
     # Whether below-threshold values should be colored in red (default) or green (reverse).
     scalar_reverse_colors = ['double_support_time']
     # Whether should be red-green-red plot
     scalar_centered = ['step_length_symmetry','step_width']
+
+    scalars_to_exclude = ['gait_speed']
     
     # %% Return indices for visualizer and line curve plot.
     # %% Create json for deployement.
@@ -153,32 +152,46 @@ def handler(event, context):
     times['start'] = float(gait_events[last_leg]['ipsilateralTime'][-1,0])
     times['end'] = float(gait_events[last_leg]['ipsilateralTime'][0,-1])
     
-    # Metrics
+   # Metrics
     metrics_out = {}
     for scalar_name in scalar_names:
+        if scalar_name in scalars_to_exclude:
+            continue
         metrics_out[scalar_name] = {}
         vertical_values = np.round(gait_scalars[scalar_name]['value'] *
-                                   gait_scalars[scalar_name]['multiplier'], 
-                                   gait_scalars[scalar_name]['decimal'])
-        metrics_out[scalar_name]['label'] = scalar_labels[scalar_name]
+                                   scalars[scalar_name]['multiplier'], 
+                                   scalars[scalar_name]['decimal'])
+        metrics_out[scalar_name]['label'] = scalars[scalar_name]['label']
         metrics_out[scalar_name]['value'] = vertical_values
-        metrics_out[scalar_name]['info'] = gait_scalars[scalar_name]['info']
+        metrics_out[scalar_name]['info'] = scalars[scalar_name]['info']
         if scalar_name in scalar_reverse_colors:
             # Margin zone (orange) is 10% above threshold.
             metrics_out[scalar_name]['colors'] = ["green", "yellow", "red"]
-            metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name]['value'],thresholds[scalar_name]['decimal']))
-            metrics_out[scalar_name]['max_limit'] = float(np.round(1.10*thresholds[scalar_name]['value'],thresholds[scalar_name]['decimal']))
+            metrics_out[scalar_name]['min_limit'] = float(np.round(scalars[scalar_name]['threshold'],scalars[scalar_name]['decimal']))
+            metrics_out[scalar_name]['max_limit'] = float(np.round(1.10*scalars[scalar_name]['threshold'],scalars[scalar_name]['decimal']))
         elif scalar_name in scalar_centered:
             # Red, green, red
             metrics_out[scalar_name]['colors'] = ["red", "green", "red"]
-            metrics_out[scalar_name]['min_limit'] = float(np.round(thresholds[scalar_name]['value'][0],thresholds[scalar_name]['decimal']))        
-            metrics_out[scalar_name]['max_limit'] = float(np.round(thresholds[scalar_name]['value'][1],thresholds[scalar_name]['decimal'])) 
+            metrics_out[scalar_name]['min_limit'] = float(np.round(scalars[scalar_name]['threshold'][0],scalars[scalar_name]['decimal']))        
+            metrics_out[scalar_name]['max_limit'] = float(np.round(scalars[scalar_name]['threshold'][1],scalars[scalar_name]['decimal'])) 
         else:
             # Margin zone (orange) is 10% below threshold.
             metrics_out[scalar_name]['colors'] = ["red", "yellow", "green"]
-            metrics_out[scalar_name]['min_limit'] = float(np.round(0.90*thresholds[scalar_name]['value'],thresholds[scalar_name]['decimal']))
-            metrics_out[scalar_name]['max_limit'] = float(np.round(thresholds[scalar_name]['value'],thresholds[scalar_name]['decimal']))
+            metrics_out[scalar_name]['min_limit'] = float(np.round(0.90*scalars[scalar_name]['threshold'],scalars[scalar_name]['decimal']))
+            metrics_out[scalar_name]['max_limit'] = float(np.round(scalars[scalar_name]['threshold'],scalars[scalar_name]['decimal']))
             
+    metrics_out_ordered = metrics_out.copy()
+    for scalar_name in scalar_names:
+        if scalar_name in metrics_out_ordered:
+            # change the name of the key to str(scalars['order]) + scalar_name
+            # the name should be a two-character string, if the order is only one digit, add a 0 in front
+            order = scalars[scalar_name]['order']
+            if order < 10:
+                order = '0' + str(order)
+            else:
+                order = str(order)
+            metrics_out_ordered[order + '_' + scalar_name] = metrics_out_ordered.pop(scalar_name)
+    
     # Datasets
     colNames = gait[last_leg].coordinateValues.columns
     data = gait[last_leg].coordinateValues.to_numpy()
@@ -203,7 +216,7 @@ def handler(event, context):
     # Create results dictionnary.
     results = {
         'indices': times, 
-        'metrics': metrics_out, 
+        'metrics': metrics_out_ordered, 
         'datasets': datasets,
         'x_axis': 'time', 
         'y_axis': y_axes}
