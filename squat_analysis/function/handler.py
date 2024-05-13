@@ -44,11 +44,9 @@ def handler(event, context):
 
     # %% User inputs.
     # Specify session id; see end of url in app.opencap.ai/session/<session_id>.
-    # session_id = "8e430ad2-989c-4354-a6f1-7eb21fa0a16e"
     session_id = kwargs['session_id']
     
     # Specify trial names in a list; use None to process all trials in a session.
-    # specific_trial_names = ['walk']
     specific_trial_names = kwargs['specific_trial_names']
     
     # Specify where to download the data.
