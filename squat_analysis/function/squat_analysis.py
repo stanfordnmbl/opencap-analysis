@@ -23,11 +23,11 @@ sys.path.append('../')
 
 import numpy as np
 import pandas as pd
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, peak_widths
 from matplotlib import pyplot as plt
 
 from utilsKinematics import kinematics
-
+import opensim
 
 class squat_analysis(kinematics):
     
@@ -53,28 +53,42 @@ class squat_analysis(kinematics):
 
         # Coordinate values.
         self.coordinateValues = self.get_coordinate_values()
+        
+        # Body transforms
+        self.bodyTransformDict = self.get_body_transform_dict()
 
         # Making sure time vectors of marker and coordinate data are the same.
         if not np.allclose(self.markerDict['time'], self.coordinateValues['time'], atol=.001, rtol=0):
             raise Exception('Time vectors of marker and coordinate data are not the same.')
         
-        # Trim marker data and coordinate values.
+        if not np.allclose(self.bodyTransformDict['time'], self.coordinateValues['time'], atol=.001, rtol=0):
+            raise Exception('Time vectors of body transforms and coordinate data are not the same.')
+            
+        # Trim marker, body transforms, and coordinate data.
         if self.trimming_start > 0:
             self.idx_trim_start = np.where(np.round(self.markerDict['time'] - self.trimming_start,6) <= 0)[0][-1]
-            self.markerDict['time'] = self.markerDict['time'][self.idx_trim_start:,]
+            self.markerDict['time'] = self.markerDict['time'][self.idx_trim_start:]
             for marker in self.markerDict['markers']:
                 self.markerDict['markers'][marker] = self.markerDict['markers'][marker][self.idx_trim_start:,:]
+            self.bodyTransformDict['time'] = self.bodyTransformDict['time'][self.idx_trim_start:]
+            for body in self.bodyTransformDict['body_transforms']:
+                self.bodyTransformDict['body_transforms'][body] = \
+                    self.bodyTransformDict['body_transforms'][body][self.idx_trim_start:]
             self.coordinateValues = self.coordinateValues.iloc[self.idx_trim_start:]
         
         if self.trimming_end > 0:
             self.idx_trim_end = np.where(np.round(self.markerDict['time'],6) <= np.round(self.markerDict['time'][-1] - self.trimming_end,6))[0][-1] + 1
-            self.markerDict['time'] = self.markerDict['time'][:self.idx_trim_end,]
+            self.markerDict['time'] = self.markerDict['time'][:self.idx_trim_end]
             for marker in self.markerDict['markers']:
                 self.markerDict['markers'][marker] = self.markerDict['markers'][marker][:self.idx_trim_end,:]
+            self.bodyTransformDict['time'] = self.bodyTransformDict['time'][self.idx_trim_end:]
+            for body in self.bodyTransformDict['body_transforms']:
+                self.bodyTransformDict['body_transforms'][body] = \
+                    self.bodyTransformDict['body_transforms'][body][self.idx_trim_end:]
             self.coordinateValues = self.coordinateValues.iloc[:self.idx_trim_end]
         
         # Segment squat repetitions.
-        self.squatEvents = self.segment_squat(n_repetitions=n_repetitions)
+        self.squatEvents = self.segment_squat(n_repetitions=n_repetitions, visualizeSegmentation=False)
         self.nRepetitions = np.shape(self.squatEvents['eventIdxs'])[0]
         
         # Initialize variables to be lazy loaded.
@@ -111,7 +125,7 @@ class squat_analysis(kinematics):
         nonexistant_methods = [entry for entry in scalarNames if 'compute_' + entry not in method_names]
         
         if len(nonexistant_methods) > 0:
-            raise Exception(str(['compute_' + a for a in nonexistant_methods]) + ' does not exist in gait_analysis class.')
+            raise Exception(str(['compute_' + a for a in nonexistant_methods]) + ' does not exist in squat_analysis class.')
         
         scalarDict = {}
         for scalarName in scalarNames:
@@ -121,37 +135,37 @@ class squat_analysis(kinematics):
                 scalarDict[scalarName]['units']) = thisFunction(return_all=return_all)
         
         return scalarDict
+        
     
-    def segment_squat(self, n_repetitions=-1, height_value=0.2, visualizeSegmentation=False):
+    def segment_squat(self, n_repetitions=-1, peak_proportion_threshold=0.7, 
+                      peak_width_rel_height=0.95, peak_distance_sec=0.5,
+                      toe_height_threshold=0.05,
+                      visualizeSegmentation=False):
 
         pelvis_ty = self.coordinateValues['pelvis_ty'].to_numpy()  
         dt = np.mean(np.diff(self.time))
 
         # Identify minimums.
         pelvSignal = np.array(-pelvis_ty - np.min(-pelvis_ty))
-        pelvSignalPos = np.array(pelvis_ty - np.min(pelvis_ty))
-        idxMinPelvTy,_ = find_peaks(pelvSignal, distance=.7/dt, height=height_value)
+        pelvRange = np.abs(np.max(pelvis_ty) - np.min(pelvis_ty))
+        peakThreshold = peak_proportion_threshold * pelvRange
+        idxMinPelvTy,_ = find_peaks(pelvSignal, prominence=peakThreshold,
+                                    distance=peak_distance_sec/dt)
+        peakWidths = peak_widths(pelvSignal, idxMinPelvTy, 
+                                 rel_height=peak_width_rel_height)
         
-        # Find the max adjacent to all of the minimums.
-        minIdxOld = 0
+        # Store start and end indices.
         startEndIdxs = []
-        for i, minIdx in enumerate(idxMinPelvTy):
-            if i < len(idxMinPelvTy) - 1:
-                nextIdx = idxMinPelvTy[i+1]
-            else:
-                nextIdx = len(pelvSignalPos)
-            startIdx = np.argmax(pelvSignalPos[minIdxOld:minIdx]) + minIdxOld
-            endIdx = np.argmax(pelvSignalPos[minIdx:nextIdx]) + minIdx
-            startEndIdxs.append([startIdx,endIdx])
-            minIdxOld = np.copy(minIdx)            
+        for start_ips, end_ips in zip(peakWidths[2], peakWidths[3]):
+            startEndIdxs.append([start_ips, end_ips])
+        startEndIdxs = np.rint(startEndIdxs).astype(int)
             
         # Limit the number of repetitions.
         if n_repetitions != -1:
             startEndIdxs = startEndIdxs[-n_repetitions:]
             
-        # Extract events: start and end of each repetition.
-        eventIdxs = np.array(startEndIdxs)
-        eventTimes = self.time[eventIdxs]            
+        # Store start and end event times
+        eventTimes = self.time[startEndIdxs]            
         
         if visualizeSegmentation:
             plt.figure()     
@@ -162,16 +176,35 @@ class squat_analysis(kinematics):
                         label='Start/End rep')
                 if c_v == 0:
                     plt.legend()
+            plt.hlines(-peakWidths[1], peakWidths[2], peakWidths[3], color='k',
+                       label='peak start/end')
             plt.xlabel('Frames')
             plt.ylabel('Position [m]')
             plt.title('Vertical pelvis position')
             plt.draw()
+        
+        # Detect squat type (double leg, single leg right, single leg left)
+        # Use toe markers
+        eventTypes = []
+        markersDict = self.markerDict['markers']
+        
+        for eventIdx in startEndIdxs:
+            lToeYMean = np.mean(markersDict['L_toe_study'][eventIdx[0]:eventIdx[1]+1, 1])
+            rToeYMean = np.mean(markersDict['r_toe_study'][eventIdx[0]:eventIdx[1]+1, 1])
             
+            if lToeYMean - rToeYMean > toe_height_threshold:
+                eventTypes.append('single_leg_r')
+            elif rToeYMean - lToeYMean > toe_height_threshold:
+                eventTypes.append('single_leg_l')
+            else:
+                eventTypes.append('double_leg')
+        
         # Output.
         squatEvents = {
             'eventIdxs': startEndIdxs,
             'eventTimes': eventTimes,
-            'eventNames':['repStart','repEnd']}
+            'eventNames':['repStart','repEnd'],
+            'eventTypes': eventTypes}
         
         return squatEvents
     
@@ -253,6 +286,147 @@ class squat_analysis(kinematics):
             return ranges_of_motion, units
         else:
             return range_of_motion_mean, range_of_motion_std, units
+
+    def compute_squat_depth(self, return_all=False):
+        pelvis_ty = self.coordinateValues['pelvis_ty'].to_numpy()  
+        
+        squat_depths = np.zeros((self.nRepetitions))
+        for i in range(self.nRepetitions):            
+            rep_range = self.squatEvents['eventIdxs'][i]
+            
+            pelvis_ty_range = pelvis_ty[rep_range[0]:rep_range[1]+1]
+            squat_depths[i] = np.max(pelvis_ty_range) - np.min(pelvis_ty_range)
+        
+        # Average across all squats.
+        squat_depths_mean = np.mean(squat_depths)
+        squat_depths_std = np.std(squat_depths)
+        
+        # Define units.
+        units = 'm'
+        
+        if return_all:
+            return squat_depths, units
+        else:
+            return squat_depths_mean, squat_depths_std, units
+
+    def compute_trunk_lean_relative_to_pelvis(self, return_all=False):
+        torso_transforms = self.bodyTransformDict['body_transforms']['torso']
+        pelvis_transforms = self.bodyTransformDict['body_transforms']['pelvis']
+        
+        max_trunk_leans = np.zeros((self.nRepetitions))
+        for i in range(self.nRepetitions):            
+            rep_range = self.squatEvents['eventIdxs'][i]
+            
+            torso_transforms_range = torso_transforms[rep_range[0]:rep_range[1]+1]
+            pelvis_transforms_range = pelvis_transforms[rep_range[0]:rep_range[1]+1]
+            
+            trunk_leans_range = np.zeros(len(torso_transforms_range))
+            for j in range(len(torso_transforms_range)):
+                y_axis = opensim.Vec3(0, 1, 0)
+                torso_y_in_ground = torso_transforms_range[j].xformFrameVecToBase(y_axis).to_numpy()
+                
+                z_axis = opensim.Vec3(0, 0, 1)
+                pelvis_z_in_ground = pelvis_transforms_range[j].xformFrameVecToBase(z_axis).to_numpy()
+                
+                acos_deg = np.rad2deg(np.arccos(np.dot(torso_y_in_ground, pelvis_z_in_ground)))
+                trunk_leans_range[j] = 90 - acos_deg
+            
+            # using absolute value for now. perhaps keep track of both positive
+            # and negative trunk lean angles (to try to detect a bad side?)
+            max_trunk_leans[i] = np.max(np.abs(trunk_leans_range))
+            units = 'deg'
+            
+            if return_all:
+                return max_trunk_leans, units
+            
+            else:
+                trunk_lean_mean = np.mean(max_trunk_leans)
+                trunk_lean_std = np.std(max_trunk_leans)
+                return trunk_lean_mean, trunk_lean_std, units
+    
+    def compute_trunk_lean_relative_to_ground(self, return_all=False):
+        torso_transforms = self.bodyTransformDict['body_transforms']['torso']
+        pelvis_transforms = self.bodyTransformDict['body_transforms']['pelvis']
+        
+        max_trunk_leans = np.zeros((self.nRepetitions))
+        for i in range(self.nRepetitions):            
+            rep_range = self.squatEvents['eventIdxs'][i]
+            
+            torso_transforms_range = torso_transforms[rep_range[0]:rep_range[1]+1]
+            pelvis_transforms_range = pelvis_transforms[rep_range[0]:rep_range[1]+1]
+            
+            trunk_leans_range = np.zeros(len(torso_transforms_range))
+            for j in range(len(torso_transforms_range)):
+                y_axis = opensim.Vec3(0, 1, 0)
+                torso_y_in_ground = torso_transforms_range[j].xformFrameVecToBase(y_axis).to_numpy()
+                
+                # find the heading of the pelvis (in the ground x-z plane)
+                x_axis = opensim.Vec3(1, 0, 0)
+                pelvis_x_in_ground = pelvis_transforms_range[j].xformFrameVecToBase(x_axis).to_numpy()
+                pelvis_x_in_ground_xz_plane = pelvis_x_in_ground
+                pelvis_x_in_ground_xz_plane[1] = 0
+                pelvis_x_in_ground_xz_plane /= np.linalg.norm(pelvis_x_in_ground_xz_plane)
+                
+                # find the z-axis for comparison to the torso (z-axis in ground
+                # that is rotated to the heading of the pelvis)
+                rotated_z_axis = np.cross(pelvis_x_in_ground_xz_plane, np.array([0, 1, 0]))
+                
+                acos_deg = np.rad2deg(np.arccos(np.dot(torso_y_in_ground, rotated_z_axis)))
+                trunk_leans_range[j] = 90 - acos_deg
+            
+            # using absolute value for now. perhaps keep track of both positive
+            # and negative trunk lean angles (to try to detect a bad side?)
+            max_trunk_leans[i] = np.max(np.abs(trunk_leans_range))
+        
+        units = 'deg'
+            
+        if return_all:
+            return max_trunk_leans, units
+        
+        else:
+            trunk_lean_mean = np.mean(max_trunk_leans)
+            trunk_lean_std = np.std(max_trunk_leans)
+            return trunk_lean_mean, trunk_lean_std, units
+        
+    def compute_trunk_flexion_relative_to_ground(self, return_all=False):
+        torso_transforms = self.bodyTransformDict['body_transforms']['torso']
+        pelvis_transforms = self.bodyTransformDict['body_transforms']['pelvis']
+        
+        max_trunk_flexions = np.zeros((self.nRepetitions))
+        for i in range(self.nRepetitions):            
+            rep_range = self.squatEvents['eventIdxs'][i]
+            
+            torso_transforms_range = torso_transforms[rep_range[0]:rep_range[1]+1]
+            pelvis_transforms_range = pelvis_transforms[rep_range[0]:rep_range[1]+1]
+            
+            trunk_flexions_range = np.zeros(len(torso_transforms_range))
+            for j in range(len(torso_transforms_range)):
+                y_axis = opensim.Vec3(0, 1, 0)
+                torso_y_in_ground = torso_transforms_range[j].xformFrameVecToBase(y_axis).to_numpy()
+                
+                # find the heading of the pelvis (in the ground x-z plane)
+                x_axis = opensim.Vec3(1, 0, 0)
+                pelvis_x_in_ground = pelvis_transforms_range[j].xformFrameVecToBase(x_axis).to_numpy()
+                pelvis_x_in_ground_xz_plane = pelvis_x_in_ground
+                pelvis_x_in_ground_xz_plane[1] = 0
+                pelvis_x_in_ground_xz_plane /= np.linalg.norm(pelvis_x_in_ground_xz_plane)
+                
+                acos_deg = np.rad2deg(np.arccos(np.dot(torso_y_in_ground, pelvis_x_in_ground_xz_plane)))
+                trunk_flexions_range[j] = 90 - acos_deg
+            
+            # using absolute value for now. perhaps keep track of both positive
+            # and negative trunk lean angles (to try to detect a bad side?)
+            max_trunk_flexions[i] = np.max(trunk_flexions_range)
+        
+        units = 'deg'
+            
+        if return_all:
+            return max_trunk_flexions, units
+        
+        else:
+            max_trunk_flexions_mean = np.mean(max_trunk_flexions)
+            max_trunk_flexions_std = np.std(max_trunk_flexions)
+            return max_trunk_flexions_mean, max_trunk_flexions_std, units
     
     def get_coordinates_segmented(self):
         
@@ -325,3 +499,4 @@ class squat_analysis(kinematics):
         comValuesTimeNormalized['indiv'] = [pd.DataFrame(data=d, columns=colNames) for d in comValuesSegmentedNorm]
         
         return comValuesTimeNormalized 
+    
