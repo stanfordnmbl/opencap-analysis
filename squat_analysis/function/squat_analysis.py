@@ -62,7 +62,7 @@ class squat_analysis(kinematics):
             raise Exception('Time vectors of marker and coordinate data are not the same.')
         
         if not np.allclose(self.bodyTransformDict['time'], self.coordinateValues['time'], atol=.001, rtol=0):
-            raise Exception('Time vectors of body transofrms and coordinate data are not the same.')
+            raise Exception('Time vectors of body transforms and coordinate data are not the same.')
             
         # Trim marker, body transforms, and coordinate data.
         if self.trimming_start > 0:
@@ -88,7 +88,7 @@ class squat_analysis(kinematics):
             self.coordinateValues = self.coordinateValues.iloc[:self.idx_trim_end]
         
         # Segment squat repetitions.
-        self.squatEvents = self.segment_squat(n_repetitions=n_repetitions, visualizeSegmentation=True)
+        self.squatEvents = self.segment_squat(n_repetitions=n_repetitions, visualizeSegmentation=False)
         self.nRepetitions = np.shape(self.squatEvents['eventIdxs'])[0]
         
         # Initialize variables to be lazy loaded.
