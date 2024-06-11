@@ -90,6 +90,11 @@ def handler(event, context):
             squat_type = 'Single leg squats (left)'
         elif eventTypes[0] == 'single_leg_r':
             squat_type = 'Single leg squats (right)'
+           
+    # Pass squat type information into info_text dictionary.
+    info_text = {}
+    info_text['squat_type'] = {'label': 'Squat type detected',
+                              'text': squat_type}
     
     # Compute metrics.
     max_trunk_lean_ground_mean, max_trunk_lean_ground_std, max_trunk_lean_ground_units = squat.compute_trunk_lean_relative_to_ground()
@@ -148,7 +153,7 @@ def handler(event, context):
         'datasets': datasets,
         'x_axis': 'time', 
         'y_axis': y_axes,
-        'squat_type': squat_type}
+        'info_text': info_text}
     
     return {
         'statusCode': 200,
