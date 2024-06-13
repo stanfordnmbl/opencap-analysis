@@ -75,7 +75,7 @@ class gait_analysis(kinematics):
             self.coordinateValues = self.coordinateValues.iloc[:self.idx_trim_end]
         
         # Rotate marker data so x is forward (not using for now, but could be useful for some analyses).
-        # self.rotation_about_y, self.markerDictRotated = self.rotate_x_forward()
+        self.rotation_about_y, self.markerDictRotated = self.rotate_x_forward()
 
         # Segment gait cycles.
         self.gaitEvents = self.segment_walking(n_gait_cycles=n_gait_cycles,leg=leg)
@@ -257,14 +257,14 @@ class gait_analysis(kinematics):
         step_lengths = {}
         
         step_lengths[contLeg.lower()] = (
-            - self.markerDictRotatedPerGaitCycle['markers'][leg + '_calc_study'][self.gaitEvents['ipsilateralIdx'][:,:1],0] + 
-            self.markerDictRotatedPerGaitCycle['markers'][contLeg + '_calc_study'][self.gaitEvents['contralateralIdx'][:,1:2],0] + 
+            - self.markerDictRotated['markers'][leg + '_calc_study'][self.gaitEvents['ipsilateralIdx'][:,:1],0] + 
+            self.markerDictRotated['markers'][contLeg + '_calc_study'][self.gaitEvents['contralateralIdx'][:,1:2],0] + 
             self.treadmillSpeed * (self.gaitEvents['contralateralTime'][:,1:2] -
                                    self.gaitEvents['ipsilateralTime'][:,:1]))
         
         step_lengths[leg.lower()]  = (
-            self.markerDictRotatedPerGaitCycle['markers'][leg + '_calc_study'][self.gaitEvents['ipsilateralIdx'][:,2:],0] - 
-            self.markerDictRotatedPerGaitCycle['markers'][contLeg + '_calc_study'][self.gaitEvents['contralateralIdx'][:,1:2],0] + 
+            self.markerDictRotated['markers'][leg + '_calc_study'][self.gaitEvents['ipsilateralIdx'][:,2:],0] - 
+            self.markerDictRotated['markers'][contLeg + '_calc_study'][self.gaitEvents['contralateralIdx'][:,1:2],0] + 
             self.treadmillSpeed * (-self.gaitEvents['contralateralTime'][:,1:2] +
                                    self.gaitEvents['ipsilateralTime'][:,2:]))
                
@@ -812,7 +812,7 @@ class gait_analysis(kinematics):
         
         return coordinateValuesTimeNormalized
 
-    def segment_walking(self, n_gait_cycles=-1, leg='auto', visualize=False):
+    def segment_walking(self, n_gait_cycles=-1, leg='auto', delete_hand_sync_stride=True, visualize=False):
 
         # n_gait_cycles = -1 finds all accessible gait cycles. Otherwise, it 
         # finds that many gait cycles, working backwards from end of trial.
@@ -989,6 +989,10 @@ class gait_analysis(kinematics):
         gaitEvents_cont = np.zeros((n_gait_cycles, 2),dtype=int)
         if n_gait_cycles <1:
             raise Exception('Not enough gait cycles found.')
+            
+        if delete_hand_sync_stride:
+            r_wrist_rel_y = self.markerDict['markers']['r_mwrist_study'][:,1] - self.markerDict['markers']['r_shoulder_study'][:,1]
+            l_wrist_rel_y = self.markerDict['markers']['L_mwrist_study'][:,1] - self.markerDict['markers']['L_shoulder_study'][:,1]
 
         for i in range(n_gait_cycles):
             # Ipsilateral HS, TO, HS.
@@ -1026,6 +1030,12 @@ class gait_analysis(kinematics):
                                ' steps until the end. Skipping this step.')
                 gaitEvents_cont[i,:] = -1
                 gaitEvents_ips[i,:] = -1
+                
+            elif delete_hand_sync_stride:
+                if (np.any(r_wrist_rel_y[gaitEvents_ips[i,0]:gaitEvents_ips[i,2]] > 0.1) or
+                   np.any(l_wrist_rel_y[gaitEvents_ips[i,0]:gaitEvents_ips[i,2]] > 0.1)):
+                    gaitEvents_cont[i,:] = -1
+                    gaitEvents_ips[i,:] = -1
         
         # Remove any nan rows
         mask_ips = (gaitEvents_ips == -1).any(axis=1)
