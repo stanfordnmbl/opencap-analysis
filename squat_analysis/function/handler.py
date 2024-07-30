@@ -141,10 +141,14 @@ def handler(event, context):
     # Available options for line curve chart.
     y_axes = list(colNames)
     y_axes.remove('time')
-    y_axes.remove('knee_angle_r_beta')
-    y_axes.remove('knee_angle_l_beta')
-    y_axes.remove('mtp_angle_r')
-    y_axes.remove('mtp_angle_l')
+    if 'knee_angle_r_beta' in y_axes:
+        y_axes.remove('knee_angle_r_beta')
+    if 'knee_angle_l_beta' in y_axes:
+        y_axes.remove('knee_angle_l_beta')
+    if 'mtp_angle_r' in y_axes:
+        y_axes.remove('mtp_angle_r')
+    if 'mtp_angle_l' in y_axes:
+        y_axes.remove('mtp_angle_l')
     
     # Create results dictionary.
     results = {
